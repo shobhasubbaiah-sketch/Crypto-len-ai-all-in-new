@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aegis Lab — CryptoLens AI</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#0f172a',
+                            900: '#090d16',
+                            950: '#030712'
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['JetBrains Mono', 'Fira Code', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js and Plugins -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- CryptoJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&display=swap');
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #090d16;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+        
+        .glow-cyan {
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.25);
+        }
+        .glow-red {
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.25);
+        }
+        .glow-emerald {
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.25);
+        }
+        
+        @keyframes pulse-fast {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .animate-pulse-fast {
+            animation: pulse-fast 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-cyan-500 selection:text-black">
+<div id="aegis-demo-disclosure" style="position:sticky;top:0;z-index:1000;padding:10px 16px;background:#422006;color:#fef3c7;border-bottom:1px solid #a16207;font:12px/1.5 system-ui,sans-serif;text-align:center">
+<strong>AEGIS LAB — SIMULATION ONLY.</strong> Prices, security scores, order-book depth, portfolio examples and hash entries on this page are illustrative/demo data, not live market or blockchain observations. Swap and alert controls do not execute trades or monitor markets. Do not use these values to make financial decisions. <a href="index.html" style="color:#67e8f9;text-decoration:underline;margin-left:8px">← Return to CryptoLens AI</a>
+</div>
+
+
+    <!-- Top Navigation Header -->
+    <header class="border-b border-slate-800/80 bg-slate-900/90 backdrop-blur sticky top-0 z-50 px-4 py-2.5 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="p-2 bg-gradient-to-tr from-cyan-600 to-blue-600 rounded-lg shadow-lg shadow-cyan-500/20">
+                <i data-lucide="shield-check" class="w-6 h-6 text-white"></i>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-base font-bold tracking-wide text-white uppercase font-mono">Aegis AI</h1>
+                    <span class="px-2 py-0.5 text-[10px] font-bold bg-cyan-950 text-cyan-400 border border-cyan-800/50 rounded-full font-mono">PRO TERMINAL v3.4</span>
+                </div>
+                <p class="text-[11px] text-slate-400">CryptoLens AI • Aegis Simulation Lab</p>
+            </div>
+        </div>
+
+        <!-- Global Quick Stats Bar -->
+        <div class="hidden xl:flex items-center space-x-6 text-xs font-mono bg-slate-950 px-4 py-1.5 rounded-lg border border-slate-800/80">
+            <div>
+                <span class="text-slate-500">MARKET CAP:</span>
+                <span class="text-slate-200 font-bold ml-1">$2.48T</span>
+                <span class="text-emerald-400 text-[10px] ml-1">+2.4%</span>
+            </div>
+            <div class="h-3 w-px bg-slate-800"></div>
+            <div>
+                <span class="text-slate-500">24H VOL:</span>
+                <span class="text-slate-200 font-bold ml-1">$94.2B</span>
+            </div>
+            <div class="h-3 w-px bg-slate-800"></div>
+            <div>
+                <span class="text-slate-500">BTC DOMINANCE:</span>
+                <span class="text-cyan-400 font-bold ml-1">54.8%</span>
+            </div>
+            <div class="h-3 w-px bg-slate-800"></div>
+            <div>
+                <span class="text-slate-500">ETH GAS:</span>
+                <span class="text-emerald-400 font-bold ml-1">12 Gwei</span>
+            </div>
+        </div>
+
+        <!-- Right System Controls -->
+        <div class="flex items-center space-x-3">
+            <!-- Currency Switcher -->
+            <select id="currencySelect" onchange="changeCurrency(this.value)" class="bg-slate-950 border border-slate-800 rounded-md px-2.5 py-1 text-xs font-mono text-slate-300 focus:outline-none focus:border-cyan-500">
+                <option value="USD">USD ($)</option>
+                <option value="EUR">EUR (€)</option>
+                <option value="INR">INR (₹)</option>
+                <option value="BTC">BTC (₿)</option>
+            </select>
+
+            <!-- Alerts Modal Trigger -->
+            <button onclick="openAlertsModal()" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md border border-slate-700/60 transition relative">
+                <i data-lucide="bell" class="w-4 h-4"></i>
+                <span class="absolute -top-1 -right-1 w-2 h-2 bg-cyan-500 rounded-full animate-ping"></span>
+            </button>
+
+            <!-- Live Status Pill -->
+            <div class="flex items-center space-x-1.5 bg-emerald-950/60 border border-emerald-800/60 px-2.5 py-1 rounded-md text-[11px] font-mono text-emerald-400">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="font-bold">SIMULATED FEED</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Top 25 Sample Asset Bar -->
+    <section class="border-b border-slate-800 bg-slate-900/50 px-4 py-2 overflow-x-auto whitespace-nowrap scrollbar-none">
+        <div id="top25Bar" class="flex items-center space-x-2">
+            <!-- Dynamically Rendered 25 Coin Cards -->
+        </div>
+    </section>
+
+    <!-- Main Workspace Layout -->
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 p-3 overflow-hidden">
+        
+        <!-- LEFT PANEL: Security Audit & Explainable AI (3 Columns) -->
+        <aside class="lg:col-span-3 flex flex-col gap-3 overflow-y-auto max-h-[calc(100vh-140px)] pr-1">
+            
+            <!-- AI Security Score Gauge Card -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col items-center relative overflow-hidden">
+                <div class="w-full flex justify-between items-center mb-2">
+                    <span class="text-xs font-mono text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i data-lucide="cpu" class="w-3.5 h-3.5 text-cyan-400"></i> AI Security Rating
+                    </span>
+                    <button onclick="downloadAuditReport()" class="text-[10px] bg-cyan-950 hover:bg-cyan-900 text-cyan-400 border border-cyan-800 px-2 py-0.5 rounded transition flex items-center gap-1">
+                        <i data-lucide="download" class="w-3 h-3"></i> Report Preview
+                    </button>
+                </div>
+
+                <!-- Circular Gauge -->
+                <div class="relative w-36 h-36 flex items-center justify-center my-2">
+                    <canvas id="scoreGaugeCanvas" width="144" height="144"></canvas>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+                        <span id="gaugeScoreValue" class="text-3xl font-extrabold font-mono text-emerald-400">94</span>
+                        <span id="gaugeRiskLabel" class="text-[10px] font-bold uppercase tracking-wider text-emerald-400">LOW RISK</span>
+                    </div>
+                </div>
+
+                <!-- Sub-metrics Breakdowns -->
+                <div class="w-full space-y-2 mt-2 font-mono text-xs">
+                    <div>
+                        <div class="flex justify-between text-[11px] mb-1">
+                            <span class="text-slate-400">Contract Safety:</span>
+                            <span id="scoreSafety" class="text-emerald-400 font-bold">98/100</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div id="barSafety" class="bg-emerald-400 h-full w-[98%] transition-all duration-500"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[11px] mb-1">
+                            <span class="text-slate-400">Liquidity Depth:</span>
+                            <span id="scoreLiquidity" class="text-emerald-400 font-bold">92/100</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div id="barLiquidity" class="bg-emerald-400 h-full w-[92%] transition-all duration-500"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[11px] mb-1">
+                            <span class="text-slate-400">Holder Centralization:</span>
+                            <span id="scoreHolders" class="text-yellow-400 font-bold">85/100</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div id="barHolders" class="bg-yellow-400 h-full w-[85%] transition-all duration-500"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Explainable AI Reasoning Box -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <h3 class="text-xs font-bold text-slate-200 uppercase font-mono flex items-center gap-1.5">
+                        <i data-lucide="file-search" class="w-4 h-4 text-cyan-400"></i> AI Audit Rationale
+                    </h3>
+                    <span class="text-[10px] text-slate-500 font-mono">DEMO DATA ONLY</span>
+                </div>
+                
+                <div class="text-xs text-slate-300 space-y-2 leading-relaxed">
+                    <p id="aiReasoningSummary">
+                        Token exhibits top-tier security standards. Automated honeypot execution simulations confirmed buy/sell tax rate of 0.00%.
+                    </p>
+                    
+                    <div id="auditChecklist" class="space-y-1.5 pt-1 font-mono text-[11px]">
+                        <div class="flex items-center gap-2 text-emerald-400">
+                            <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
+                            <span>Honeypot Test: PASS (0% Tax)</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-emerald-400">
+                            <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
+                            <span>Liquidity Lock: PASS (100% Locked)</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-emerald-400">
+                            <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
+                            <span>Mint Authority: RENOUNCED</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-yellow-400">
+                            <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
+                            <span>Top 10 Holders: 18.4% Supply</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Key Token Metadata Info -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 font-mono text-xs space-y-2.5">
+                <div class="text-slate-400 text-[11px] uppercase tracking-wider mb-1">Contract Identifiers</div>
+                
+                <div class="flex justify-between items-center bg-slate-950 p-2 rounded border border-slate-800">
+                    <span class="text-slate-500">Network:</span>
+                    <span id="metaNetwork" class="text-slate-200 font-bold">Ethereum (ERC-20)</span>
+                </div>
+                
+                <div class="bg-slate-950 p-2 rounded border border-slate-800 space-y-1">
+                    <div class="flex justify-between text-slate-500 text-[10px]">
+                        <span>Contract Address:</span>
+                        <button onclick="copyCurrentAddress()" class="text-cyan-400 hover:text-cyan-300">Copy</button>
+                    </div>
+                    <div id="metaContractAddr" class="text-slate-300 font-mono text-[10px] break-all">
+                        0xdac17f958d2ee523a2206206994597c13d831ec7
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                    <div class="bg-slate-950 p-2 rounded border border-slate-800">
+                        <span class="text-slate-500 block text-[10px]">Total Supply:</span>
+                        <span id="metaTotalSupply" class="text-slate-200 font-bold">120.4M</span>
+                    </div>
+                    <div class="bg-slate-950 p-2 rounded border border-slate-800">
+                        <span class="text-slate-500 block text-[10px]">Circulating:</span>
+                        <span id="metaCirculating" class="text-slate-200 font-bold">120.4M</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CENTER PANEL: Interactive Technical Analysis Chart & Portfolio Tracker (6 Columns) -->
+        <section class="lg:col-span-6 flex flex-col gap-3 overflow-y-auto max-h-[calc(100vh-140px)]">
+            
+            <!-- Main Chart Header & Canvas -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col flex-1 min-h-[460px]">
+                
+                <!-- Chart Controls Bar -->
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-3 border-b border-slate-800">
+                    <!-- Coin Title & Price -->
+                    <div class="flex items-center space-x-3">
+                        <img id="activeCoinIcon" src="https://assets.coingecko.com/coins/images/279/large/ethereum.png" class="w-8 h-8 rounded-full" alt="coin">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h2 id="activeCoinName" class="text-base font-bold text-white">Ethereum</h2>
+                                <span id="activeCoinSymbol" class="text-xs font-mono text-slate-400 font-bold">ETH</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span id="activeCoinPrice" class="text-xl font-bold font-mono text-white">$3,480.50</span>
+                                <span id="activeCoinChange" class="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800 px-1.5 py-0.5 rounded">+4.2%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chart Technical Toggles -->
+                    <div class="flex flex-wrap items-center gap-1.5 font-mono text-xs">
+                        <!-- Chart Type Toggle -->
+                        <div class="bg-slate-950 p-1 rounded-lg border border-slate-800 flex items-center">
+                            <button onclick="setChartType('line')" id="btnChartLine" class="px-2 py-1 rounded bg-slate-800 text-cyan-400 font-bold transition">Line</button>
+                            <button onclick="setChartType('bar')" id="btnChartBar" class="px-2 py-1 rounded text-slate-400 hover:text-white transition">Bar</button>
+                        </div>
+
+                        <!-- Technical Indicators -->
+                        <div class="bg-slate-950 p-1 rounded-lg border border-slate-800 flex items-center space-x-1 text-[11px]">
+                            <label class="flex items-center space-x-1 cursor-pointer px-1.5 py-0.5 rounded hover:bg-slate-800">
+                                <input type="checkbox" id="chkEMA" onchange="toggleIndicator('ema')" checked class="accent-cyan-500 rounded">
+                                <span class="text-cyan-400 font-bold">EMA(20)</span>
+                            </label>
+                            <label class="flex items-center space-x-1 cursor-pointer px-1.5 py-0.5 rounded hover:bg-slate-800">
+                                <input type="checkbox" id="chkSMA" onchange="toggleIndicator('sma')" checked class="accent-amber-500 rounded">
+                                <span class="text-amber-400 font-bold">SMA(50)</span>
+                            </label>
+                            <label class="flex items-center space-x-1 cursor-pointer px-1.5 py-0.5 rounded hover:bg-slate-800">
+                                <input type="checkbox" id="chkRSI" onchange="toggleIndicator('rsi')" checked class="accent-purple-500 rounded">
+                                <span class="text-purple-400 font-bold">RSI(14)</span>
+                            </label>
+                        </div>
+
+                        <!-- Timeframe Selection -->
+                        <div class="bg-slate-950 p-1 rounded-lg border border-slate-800 flex items-center">
+                            <button onclick="setTimeframe('1D')" class="tf-btn px-2 py-1 rounded bg-slate-800 text-cyan-400 font-bold">1D</button>
+                            <button onclick="setTimeframe('1W')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white">1W</button>
+                            <button onclick="setTimeframe('1M')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white">1M</button>
+                            <button onclick="setTimeframe('1Y')" class="tf-btn px-2 py-1 rounded text-slate-400 hover:text-white">1Y</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Canvas Chart Area -->
+                <div class="relative flex-1 w-full min-h-[320px]">
+                    <canvas id="mainChartCanvas"></canvas>
+                </div>
+            </div>
+
+            <!-- Pro Portfolio Manager Section -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 font-mono">
+                <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="wallet" class="w-4 h-4 text-cyan-400"></i>
+                        <h3 class="text-xs font-bold text-slate-200 uppercase">Demo Portfolio Tracker</h3>
+                    </div>
+                    <button onclick="openAddPositionModal()" class="text-xs bg-cyan-600 hover:bg-cyan-500 text-white font-bold px-3 py-1 rounded transition flex items-center gap-1">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Position
+                    </button>
+                </div>
+
+                <!-- Portfolio Summary Metrics -->
+                <div class="grid grid-cols-3 gap-3 mb-4 text-xs">
+                    <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                        <span class="text-slate-500 text-[10px] block">TOTAL VALUE</span>
+                        <span id="portTotalValue" class="text-base font-bold text-slate-100">$28,450.00</span>
+                    </div>
+                    <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                        <span class="text-slate-500 text-[10px] block">UNREALIZED PnL</span>
+                        <span id="portPnL" class="text-base font-bold text-emerald-400">+$3,420.50 (+13.6%)</span>
+                    </div>
+                    <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                        <span class="text-slate-500 text-[10px] block">BEST PERFORMER</span>
+                        <span id="portBestCoin" class="text-base font-bold text-cyan-400">ETH (+24.2%)</span>
+                    </div>
+                </div>
+
+                <!-- Holdings Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="text-slate-500 border-b border-slate-800 text-[10px] uppercase">
+                                <th class="pb-2 font-bold">Asset</th>
+                                <th class="pb-2 font-bold">Holdings</th>
+                                <th class="pb-2 font-bold">Avg Buy</th>
+                                <th class="pb-2 font-bold">Live Price</th>
+                                <th class="pb-2 font-bold">Unrealized PnL</th>
+                                <th class="pb-2 font-bold text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="portfolioTableBody" class="divide-y divide-slate-800/60">
+                            <!-- Dynamically populated portfolio rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- RIGHT PANEL: Order Book, Swap Simulator & Live Hash Feed (3 Columns) -->
+        <aside class="lg:col-span-3 flex flex-col gap-3 overflow-y-auto max-h-[calc(100vh-140px)] pl-1">
+            
+            <!-- Order Book & Depth Chart Widget -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 font-mono text-xs">
+                <div class="flex items-center justify-between mb-2 border-b border-slate-800 pb-2">
+                    <span class="font-bold text-slate-200 uppercase text-[11px] flex items-center gap-1.5">
+                        <i data-lucide="layers" class="w-3.5 h-3.5 text-cyan-400"></i> Simulated Order Depth
+                    </span>
+                    <span class="text-[10px] text-slate-500">SIMULATION</span>
+                </div>
+
+                <!-- Dual-sided Order Book -->
+                <div class="space-y-1 my-2 text-[11px]">
+                    <!-- Asks (Sells) -->
+                    <div id="orderBookAsks" class="space-y-0.5">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <!-- Spread Indicator -->
+                    <div class="py-1 px-2 bg-slate-950 rounded text-center text-[10px] text-slate-400 font-bold border border-slate-800 flex justify-between">
+                        <span>SPREAD: 0.01 USDT</span>
+                        <span class="text-emerald-400 font-bold" id="orderBookCurrentPrice">$3,480.50</span>
+                    </div>
+
+                    <!-- Bids (Buys) -->
+                    <div id="orderBookBids" class="space-y-0.5">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- DEX Swap / Limit Execution Widget -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 font-mono text-xs space-y-3">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <span class="font-bold text-slate-200 uppercase text-[11px] flex items-center gap-1.5">
+                        <i data-lucide="arrow-left-right" class="w-3.5 h-3.5 text-cyan-400"></i> DEX Trade Engine
+                    </span>
+                    <span class="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">SLIPPAGE 0.5%</span>
+                </div>
+
+                <!-- Swap Input Boxes -->
+                <div class="space-y-2">
+                    <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                        <div class="flex justify-between text-[10px] text-slate-500 mb-1">
+                            <span>YOU PAY</span>
+                            <span>BAL: 10,000.00 USDT</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <input type="number" id="swapPayAmount" value="1000" oninput="calculateSwap()" class="bg-transparent text-base font-bold text-white focus:outline-none w-2/3">
+                            <span class="text-xs font-bold text-slate-300 bg-slate-800 px-2 py-1 rounded">USDT</span>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-center -my-1">
+                        <div class="bg-slate-800 p-1 rounded-full border border-slate-700 text-slate-400">
+                            <i data-lucide="arrow-down" class="w-3.5 h-3.5"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                        <div class="flex justify-between text-[10px] text-slate-500 mb-1">
+                            <span>YOU RECEIVE (EST.)</span>
+                            <span id="swapRecCoin">ETH</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <input type="text" id="swapReceiveAmount" readonly value="0.287" class="bg-transparent text-base font-bold text-cyan-400 focus:outline-none w-2/3">
+                            <span id="swapRecBadge" class="text-xs font-bold text-slate-300 bg-slate-800 px-2 py-1 rounded">ETH</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="executeSwap()" class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-2.5 rounded-lg shadow-lg shadow-cyan-600/20 transition uppercase tracking-wider text-xs">
+                    Preview Simulated Swap
+                </button>
+            </div>
+
+            <!-- Synthetic Hash Sample Feed -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 font-mono text-xs flex-1 flex flex-col min-h-[300px]">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-2">
+                    <span class="font-bold text-slate-200 uppercase text-[11px] flex items-center gap-1.5">
+                        <i data-lucide="terminal" class="w-3.5 h-3.5 text-cyan-400"></i> Synthetic Hash Demo
+                    </span>
+                    <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                </div>
+
+                <!-- Continuous Scrolling Hash Stream Container -->
+                <div id="mempoolStreamContainer" class="flex-1 overflow-y-auto space-y-2 max-h-[260px] pr-1">
+                    <!-- Dynamic Stream Cards with Hex Hashes -->
+                </div>
+            </div>
+
+        </aside>
+
+    </main>
+
+    <!-- Modal: Configure Custom Alerts -->
+    <div id="alertsModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full p-5 space-y-4 font-mono">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i data-lucide="bell-ring" class="w-4 h-4 text-cyan-400"></i> Configure Price & RSI Alert
+                </h3>
+                <button onclick="closeAlertsModal()" class="text-slate-500 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="text-slate-400 block mb-1">Target Cryptocurrency</label>
+                    <select id="alertCoinSelect" class="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white">
+                        <!-- Filled dynamically -->
+                    </select>
+                </div>
+                <div>
+                    <label class="text-slate-400 block mb-1">Condition</label>
+                    <select id="alertCondition" class="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white">
+                        <option value="above">Price Rises Above ($)</option>
+                        <option value="below">Price Drops Below ($)</option>
+                        <option value="rsi_overbought">RSI Crosses Overbought (>70)</option>
+                        <option value="rsi_oversold">RSI Crosses Oversold (<30)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-slate-400 block mb-1">Threshold Value</label>
+                    <input type="number" id="alertThreshold" placeholder="e.g. 3600" class="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white focus:border-cyan-500 focus:outline-none">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeAlertsModal()" class="px-3 py-1.5 bg-slate-800 text-slate-300 rounded hover:bg-slate-700 text-xs">Cancel</button>
+                <button onclick="saveAlert()" class="px-3 py-1.5 bg-cyan-600 text-white font-bold rounded hover:bg-cyan-500 text-xs">Set Alert</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Add Portfolio Position -->
+    <div id="addPosModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full p-5 space-y-4 font-mono">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i data-lucide="plus-circle" class="w-4 h-4 text-cyan-400"></i> Add Asset Position
+                </h3>
+                <button onclick="closeAddPosModal()" class="text-slate-500 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="text-slate-400 block mb-1">Cryptocurrency</label>
+                    <select id="posCoinSelect" class="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white">
+                        <!-- Filled dynamically -->
+                    </select>
+                </div>
+                <div>
+                    <label class="text-slate-400 block mb-1">Quantity Owned</label>
+                    <input type="number" id="posQuantity" placeholder="e.g. 2.5" class="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white focus:border-cyan-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="text-slate-400 block mb-1">Average Buy Price ($)</label>
+                    <input type="number" id="posBuyPrice" placeholder="e.g. 2800" class="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white focus:border-cyan-500 focus:outline-none">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeAddPosModal()" class="px-3 py-1.5 bg-slate-800 text-slate-300 rounded hover:bg-slate-700 text-xs">Cancel</button>
+                <button onclick="savePosition()" class="px-3 py-1.5 bg-cyan-600 text-white font-bold rounded hover:bg-cyan-500 text-xs">Save Position</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Core Script -->
+    <script>
+        // Full Top 25 Cryptocurrencies Dataset
+        const TOP_25_COINS = [
+            { id: 'ethereum', symbol: 'ETH', name: 'Ethereum', price: 3480.50, change: 4.2, mcap: '418.5B', icon: 'https://assets.coingecko.com/coins/images/279/large/ethereum.png', contract: '0xdac17f958d2ee523a2206206994597c13d831ec7', score: 94, risk: 'LOW RISK' },
+            { id: 'bitcoin', symbol: 'BTC', name: 'Bitcoin', price: 64250.00, change: 2.1, mcap: '1.26T', icon: 'https://assets.coingecko.com/coins/images/1/large/bitcoin.png', contract: 'Native (UTXO)', score: 99, risk: 'VERY SAFE' },
+            { id: 'solana', symbol: 'SOL', name: 'Solana', price: 145.20, change: -1.4, mcap: '67.4B', icon: 'https://assets.coingecko.com/coins/images/4128/large/solana.png', contract: 'So11111111111111111111111111111111111111112', score: 91, risk: 'LOW RISK' },
+            { id: 'binancecoin', symbol: 'BNB', name: 'BNB', price: 580.40, change: 1.8, mcap: '84.6B', icon: 'https://assets.coingecko.com/coins/images/825/large/bnb-icon2_2x.png', contract: '0xb8c77482e45f1f44de1745f52c74426c631b5519', score: 89, risk: 'LOW RISK' },
+            { id: 'ripple', symbol: 'XRP', name: 'XRP', price: 0.58, change: 0.5, mcap: '32.8B', icon: 'https://assets.coingecko.com/coins/images/44/large/xrp-symbol-white-128.png', contract: 'Native Ripple', score: 88, risk: 'LOW RISK' },
+            { id: 'cardano', symbol: 'ADA', name: 'Cardano', price: 0.39, change: -0.8, mcap: '14.1B', icon: 'https://assets.coingecko.com/coins/images/975/large/cardano.png', contract: 'Native Cardano', score: 92, risk: 'LOW RISK' },
+            { id: 'dogecoin', symbol: 'DOGE', name: 'Dogecoin', price: 0.12, change: 5.6, mcap: '17.5B', icon: 'https://assets.coingecko.com/coins/images/5/large/dogecoin.png', contract: 'Native UTXO', score: 84, risk: 'MEDIUM RISK' },
+            { id: 'avalanche-2', symbol: 'AVAX', name: 'Avalanche', price: 26.80, change: 3.1, mcap: '10.6B', icon: 'https://assets.coingecko.com/coins/images/12559/large/Avalanche_Circle_RedWhite_Trans.png', contract: 'Fmv260...avaxc', score: 90, risk: 'LOW RISK' },
+            { id: 'polkadot', symbol: 'DOT', name: 'Polkadot', price: 4.85, change: -2.1, mcap: '6.9B', icon: 'https://assets.coingecko.com/coins/images/12171/large/polkadot.png', contract: 'Native Substrate', score: 89, risk: 'LOW RISK' },
+            { id: 'chainlink', symbol: 'LINK', name: 'Chainlink', price: 11.40, change: 4.8, mcap: '7.1B', icon: 'https://assets.coingecko.com/coins/images/877/large/chainlink-new-logo.png', contract: '0x514910771af9ca656af840dff83e8264ecf986ca', score: 96, risk: 'VERY SAFE' },
+            { id: 'polygon-ecosystem-token', symbol: 'POL', name: 'Polygon', price: 0.41, change: 1.2, mcap: '4.2B', icon: 'https://assets.coingecko.com/coins/images/4713/large/polygon.png', contract: '0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0', score: 93, risk: 'LOW RISK' },
+            { id: 'shiba-inu', symbol: 'SHIB', name: 'Shiba Inu', price: 0.000018, change: 2.9, mcap: '10.4B', icon: 'https://assets.coingecko.com/coins/images/11939/large/shiba.png', contract: '0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce', score: 82, risk: 'MEDIUM RISK' },
+            { id: 'litecoin', symbol: 'LTC', name: 'Litecoin', price: 65.40, change: -0.4, mcap: '4.9B', icon: 'https://assets.coingecko.com/coins/images/2/large/litecoin.png', contract: 'Native UTXO', score: 91, risk: 'LOW RISK' },
+            { id: 'near', symbol: 'NEAR', name: 'NEAR Protocol', price: 4.92, change: 6.4, mcap: '5.8B', icon: 'https://assets.coingecko.com/coins/images/10365/large/near.png', contract: 'near.mainnet', score: 90, risk: 'LOW RISK' },
+            { id: 'uniswap', symbol: 'UNI', name: 'Uniswap', price: 6.85, change: 1.1, mcap: '4.1B', icon: 'https://assets.coingecko.com/coins/images/12504/large/uniswap-uni.png', contract: '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984', score: 95, risk: 'VERY SAFE' },
+            { id: 'internet-computer', symbol: 'ICP', name: 'ICP', price: 8.20, change: -1.9, mcap: '3.8B', icon: 'https://assets.coingecko.com/coins/images/14470/large/Internet_Computer_logo.png', contract: 'Native ICP', score: 86, risk: 'LOW RISK' },
+            { id: 'aptos', symbol: 'APT', name: 'Aptos', price: 8.45, change: 7.2, mcap: '4.1B', icon: 'https://assets.coingecko.com/coins/images/26455/large/aptos_round.png', contract: '0x1::aptos_coin', score: 88, risk: 'LOW RISK' },
+            { id: 'sui', symbol: 'SUI', name: 'Sui', price: 1.95, change: 12.4, mcap: '5.2B', icon: 'https://assets.coingecko.com/coins/images/26375/large/sui-ocean-square.png', contract: '0x2::sui::SUI', score: 89, risk: 'LOW RISK' },
+            { id: 'pepe', symbol: 'PEPE', name: 'Pepe', price: 0.0000098, change: 14.2, mcap: '4.1B', icon: 'https://assets.coingecko.com/coins/images/29850/large/pepe-token.png', contract: '0x6982508145454ce325ddbe47a25d4ec3d2311933', score: 76, risk: 'HIGH VOLATILITY' },
+            { id: 'render-token', symbol: 'RENDER', name: 'Render', price: 5.60, change: 4.1, mcap: '2.9B', icon: 'https://assets.coingecko.com/coins/images/11636/large/rndr.png', contract: '0x6de3737749598461c56f2aa7069791612070b659', score: 91, risk: 'LOW RISK' },
+            { id: 'fetch-ai', symbol: 'FET', name: 'Artificial Superintelligence', price: 1.42, change: 8.9, mcap: '3.6B', icon: 'https://assets.coingecko.com/coins/images/5681/large/Fetch.jpg', contract: '0xaea4616a00ba654c6e34e1e3ad86851b3f940bb2', score: 87, risk: 'LOW RISK' },
+            { id: 'filecoin', symbol: 'FIL', name: 'Filecoin', price: 3.65, change: -1.2, mcap: '2.1B', icon: 'https://assets.coingecko.com/coins/images/12817/large/filecoin.png', contract: 'Native Filecoin', score: 88, risk: 'LOW RISK' },
+            { id: 'arbitrum', symbol: 'ARB', name: 'Arbitrum', price: 0.54, change: 2.3, mcap: '1.9B', icon: 'https://assets.coingecko.com/coins/images/16547/large/arbitrum_logo.png', contract: '0x912ce59144191c1204e64559fe8253a0e49e6548', score: 94, risk: 'VERY SAFE' },
+            { id: 'optimism', symbol: 'OP', name: 'Optimism', price: 1.58, change: 3.4, mcap: '1.8B', icon: 'https://assets.coingecko.com/coins/images/25244/large/Optimism.png', contract: '0x4200000000000000000000000000000000000042', score: 93, risk: 'VERY SAFE' },
+            { id: 'weth', symbol: 'WETH', name: 'Wrapped Ether', price: 3481.00, change: 4.1, mcap: '3.4B', icon: 'https://assets.coingecko.com/coins/images/2518/large/weth.png', contract: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', score: 98, risk: 'VERY SAFE' }
+        ];
+
+        // Portfolio Global State
+        let portfolioData = [
+            { id: 'ethereum', symbol: 'ETH', name: 'Ethereum', quantity: 4.5, buyPrice: 2850.00 },
+            { id: 'solana', symbol: 'SOL', name: 'Solana', quantity: 45.0, buyPrice: 110.00 },
+            { id: 'chainlink', symbol: 'LINK', name: 'Chainlink', quantity: 250.0, buyPrice: 9.80 }
+        ];
+
+        let activeCoin = TOP_25_COINS[0];
+        let currentChartType = 'line';
+        let mainChart = null;
+        let scoreGaugeChart = null;
+        let activeCurrency = 'USD';
+        let currencySymbol = '$';
+        let currencyRate = 1.0;
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            renderTop25Bar();
+            initScoreGauge();
+            initMainChart();
+            renderOrderBook();
+            renderPortfolio();
+            startMempoolStream();
+            populateModalDropdowns();
+            selectCoin('ethereum');
+        });
+
+        // Top 25 Carousel Renderer
+        function renderTop25Bar() {
+            const container = document.getElementById('top25Bar');
+            container.innerHTML = TOP_25_COINS.map(c => `
+                <div onclick="selectCoin('${c.id}')" id="card-${c.id}" class="inline-flex items-center space-x-2.5 bg-slate-950 border border-slate-800 hover:border-cyan-500/50 px-3 py-1.5 rounded-lg cursor-pointer transition flex-shrink-0 font-mono">
+                    <img src="${c.icon}" class="w-5 h-5 rounded-full" alt="${c.symbol}">
+                    <div>
+                        <div class="flex items-center space-x-1">
+                            <span class="text-xs font-bold text-slate-200">${c.symbol}</span>
+                            <span class="text-[10px] ${c.change >= 0 ? 'text-emerald-400' : 'text-red-400'}">${c.change >= 0 ? '+' : ''}${c.change}%</span>
+                        </div>
+                        <div class="text-[11px] text-slate-400 font-bold">${currencySymbol}${(c.price * currencyRate).toFixed(2)}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Select Active Coin
+        function selectCoin(coinId) {
+            const coin = TOP_25_COINS.find(c => c.id === coinId) || TOP_25_COINS[0];
+            activeCoin = coin;
+
+            // Highlight Active Card
+            document.querySelectorAll('#top25Bar > div').forEach(el => el.classList.remove('border-cyan-500', 'bg-slate-800'));
+            const activeCard = document.getElementById(`card-${coinId}`);
+            if (activeCard) activeCard.classList.add('border-cyan-500', 'bg-slate-800');
+
+            // Update UI Details
+            document.getElementById('activeCoinIcon').src = coin.icon;
+            document.getElementById('activeCoinName').innerText = coin.name;
+            document.getElementById('activeCoinSymbol').innerText = coin.symbol;
+            document.getElementById('activeCoinPrice').innerText = `${currencySymbol}${(coin.price * currencyRate).toFixed(2)}`;
+            
+            const changeEl = document.getElementById('activeCoinChange');
+            changeEl.innerText = `${coin.change >= 0 ? '+' : ''}${coin.change}%`;
+            changeEl.className = `text-xs font-mono font-bold px-1.5 py-0.5 rounded ${coin.change >= 0 ? 'text-emerald-400 bg-emerald-950/80 border border-emerald-800' : 'text-red-400 bg-red-950/80 border border-red-800'}`;
+
+            // Update Swap Targets
+            document.getElementById('swapRecCoin').innerText = coin.symbol;
+            document.getElementById('swapRecBadge').innerText = coin.symbol;
+            calculateSwap();
+
+            // Update Metadata
+            document.getElementById('metaContractAddr').innerText = coin.contract;
+
+            // Update Gauge & Security Analysis
+            updateScoreGauge(coin.score, coin.risk);
+            updateMainChart();
+        }
+
+        // Score Gauge Initializer
+        function initScoreGauge() {
+            const ctx = document.getElementById('scoreGaugeCanvas').getContext('2d');
+            scoreGaugeChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [94, 6],
+                        backgroundColor: ['#10b981', '#1e293b'],
+                        borderWidth: 0,
+                        cutout: '82%'
+                    }]
+                },
+                options: {
+                    responsive: false,
+                    plugins: { tooltip: { enabled: false } }
+                }
+            });
+        }
+
+        function updateScoreGauge(score, riskLabel) {
+            document.getElementById('gaugeScoreValue').innerText = score;
+            document.getElementById('gaugeRiskLabel').innerText = riskLabel;
+            
+            let color = '#10b981';
+            if (score < 80) color = '#f59e0b';
+            if (score < 70) color = '#ef4444';
+
+            document.getElementById('gaugeScoreValue').style.color = color;
+            document.getElementById('gaugeRiskLabel').style.color = color;
+
+            if (scoreGaugeChart) {
+                scoreGaugeChart.data.datasets[0].backgroundColor = [color, '#1e293b'];
+                scoreGaugeChart.data.datasets[0].data = [score, 100 - score];
+                scoreGaugeChart.update();
+            }
+        }
+
+        // Main Technical Chart Engine
+        function initMainChart() {
+            const ctx = document.getElementById('mainChartCanvas').getContext('2d');
+            
+            // Dummy historical price generator
+            const labels = Array.from({length: 30}, (_, i) => `T-${30-i}d`);
+            const basePrice = activeCoin.price;
+            const dataPrices = labels.map(() => basePrice * (1 + (Math.random() - 0.48) * 0.15));
+            const dataEMA = dataPrices.map((p, i) => p * (1 + Math.sin(i / 3) * 0.02));
+            const dataSMA = dataPrices.map((p, i) => p * (1 - Math.cos(i / 4) * 0.03));
+
+            mainChart = new Chart(ctx, {
+                type: currentChartType,
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Price',
+                            data: dataPrices,
+                            borderColor: '#06b6d4',
+                            backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'EMA(20)',
+                            data: dataEMA,
+                            borderColor: '#38bdf8',
+                            borderWidth: 1.5,
+                            borderDash: [4, 4],
+                            fill: false
+                        },
+                        {
+                            label: 'SMA(50)',
+                            data: dataSMA,
+                            borderColor: '#fbbf24',
+                            borderWidth: 1.5,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 } } },
+                        y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        function updateMainChart() {
+            if (!mainChart) return;
+            const basePrice = activeCoin.price * currencyRate;
+            const newPrices = Array.from({length: 30}, () => basePrice * (1 + (Math.random() - 0.48) * 0.12));
+            mainChart.data.datasets[0].data = newPrices;
+            mainChart.data.datasets[1].data = newPrices.map((p, i) => p * (1 + Math.sin(i / 3) * 0.02));
+            mainChart.data.datasets[2].data = newPrices.map((p, i) => p * (1 - Math.cos(i / 4) * 0.03));
+            mainChart.update();
+        }
+
+        function setChartType(type) {
+            currentChartType = type;
+            document.getElementById('btnChartLine').className = `px-2 py-1 rounded transition ${type === 'line' ? 'bg-slate-800 text-cyan-400 font-bold' : 'text-slate-400 hover:text-white'}`;
+            document.getElementById('btnChartBar').className = `px-2 py-1 rounded transition ${type === 'bar' ? 'bg-slate-800 text-cyan-400 font-bold' : 'text-slate-400 hover:text-white'}`;
+            if (mainChart) {
+                mainChart.config.type = type;
+                mainChart.update();
+            }
+        }
+
+        // Order Book Simulator
+        function renderOrderBook() {
+            const asksContainer = document.getElementById('orderBookAsks');
+            const bidsContainer = document.getElementById('orderBookBids');
+            
+            const basePrice = activeCoin.price * currencyRate;
+
+            let asksHTML = '';
+            for (let i = 4; i >= 1; i--) {
+                const p = (basePrice * (1 + i * 0.0015)).toFixed(2);
+                const qty = (Math.random() * 2.5 + 0.1).toFixed(3);
+                asksHTML += `
+                    <div class="flex justify-between items-center text-red-400 bg-red-950/20 px-1.5 py-0.5 rounded">
+                        <span>${p}</span>
+                        <span class="text-slate-400">${qty}</span>
+                    </div>
+                `;
+            }
+            asksContainer.innerHTML = asksHTML;
+
+            let bidsHTML = '';
+            for (let i = 1; i <= 4; i++) {
+                const p = (basePrice * (1 - i * 0.0015)).toFixed(2);
+                const qty = (Math.random() * 3.2 + 0.1).toFixed(3);
+                bidsHTML += `
+                    <div class="flex justify-between items-center text-emerald-400 bg-emerald-950/20 px-1.5 py-0.5 rounded">
+                        <span>${p}</span>
+                        <span class="text-slate-400">${qty}</span>
+                    </div>
+                `;
+            }
+            bidsContainer.innerHTML = bidsHTML;
+            document.getElementById('orderBookCurrentPrice').innerText = `${currencySymbol}${basePrice.toFixed(2)}`;
+        }
+
+        // DEX Swap Simulator
+        function calculateSwap() {
+            const payAmount = parseFloat(document.getElementById('swapPayAmount').value) || 0;
+            const recAmount = (payAmount / (activeCoin.price * currencyRate)).toFixed(4);
+            document.getElementById('swapReceiveAmount').value = recAmount;
+        }
+
+        function executeSwap() {
+            const payAmount = document.getElementById('swapPayAmount').value;
+            const recAmount = document.getElementById('swapReceiveAmount').value;
+            alert(`SIMULATION ONLY — no trade was sent and no funds moved.
+Preview: ${payAmount} USDT for ${recAmount} ${activeCoin.symbol}`);
+        }
+
+        // Mempool Continuous Realtime Hash Stream Engine
+        function startMempoolStream() {
+            const container = document.getElementById('mempoolStreamContainer');
+            
+            setInterval(() => {
+                const randomCoin = TOP_25_COINS[Math.floor(Math.random() * TOP_25_COINS.length)];
+                const randomHash = '0x' + Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join('');
+                const shortHash = randomHash.substring(0, 10) + '...' + randomHash.substring(58);
+
+                const div = document.createElement('div');
+                div.className = 'bg-slate-950 border border-slate-800/80 p-2 rounded flex flex-col space-y-1 font-mono text-[10px] animate-pulse-fast';
+                div.innerHTML = `
+                    <div class="flex justify-between items-center text-slate-400">
+                        <span class="text-cyan-400 font-bold">[MEMPOOL TICK] ${randomCoin.symbol}</span>
+                        <span class="text-slate-500">${new Date().toLocaleTimeString()}</span>
+                    </div>
+                    <div class="text-slate-300 font-mono break-all text-[9px] bg-slate-900 p-1 rounded border border-slate-800">
+                        HASH: <span class="text-yellow-300 font-bold">${randomHash}</span>
+                    </div>
+                    <div class="flex justify-between items-center text-[9px]">
+                        <span class="text-emerald-400 font-bold">Status: SYNTHETIC SAMPLE</span>
+                        <button onclick="navigator.clipboard.writeText('${randomHash}')" class="text-cyan-400 hover:text-cyan-300">Copy Hash</button>
+                    </div>
+                `;
+
+                container.prepend(div);
+                if (container.children.length > 20) container.removeChild(container.lastChild);
+            }, 1800);
+        }
+
+        // Portfolio Engine
+        function renderPortfolio() {
+            const tbody = document.getElementById('portfolioTableBody');
+            let totalVal = 0;
+            let totalCost = 0;
+
+            tbody.innerHTML = portfolioData.map(item => {
+                const coin = TOP_25_COINS.find(c => c.id === item.id) || { price: item.buyPrice, symbol: item.symbol };
+                const livePrice = coin.price * currencyRate;
+                const itemVal = item.quantity * livePrice;
+                const itemCost = item.quantity * (item.buyPrice * currencyRate);
+                const pnl = itemVal - itemCost;
+                const pnlPct = ((pnl / itemCost) * 100).toFixed(2);
+
+                totalVal += itemVal;
+                totalCost += itemCost;
+
+                return `
+                    <tr class="hover:bg-slate-800/40 font-mono">
+                        <td class="py-2.5 font-bold text-slate-200">${item.name} (${item.symbol})</td>
+                        <td class="py-2.5 text-slate-300">${item.quantity}</td>
+                        <td class="py-2.5 text-slate-400">${currencySymbol}${(item.buyPrice * currencyRate).toFixed(2)}</td>
+                        <td class="py-2.5 text-slate-200 font-bold">${currencySymbol}${livePrice.toFixed(2)}</td>
+                        <td class="py-2.5 font-bold ${pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">
+                            ${pnl >= 0 ? '+' : ''}${currencySymbol}${pnl.toFixed(2)} (${pnlPct}%)
+                        </td>
+                        <td class="py-2.5 text-right">
+                            <button onclick="deletePosition('${item.id}')" class="text-red-400 hover:text-red-300"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            const totalPnL = totalVal - totalCost;
+            const totalPnLPct = totalCost > 0 ? ((totalPnL / totalCost) * 100).toFixed(2) : 0;
+
+            document.getElementById('portTotalValue').innerText = `${currencySymbol}${totalVal.toFixed(2)}`;
+            const pnlEl = document.getElementById('portPnL');
+            pnlEl.innerText = `${totalPnL >= 0 ? '+' : ''}${currencySymbol}${totalPnL.toFixed(2)} (${totalPnLPct}%)`;
+            pnlEl.className = `text-base font-bold ${totalPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+        }
+
+        // Global Currency Switcher
+        function changeCurrency(curr) {
+            activeCurrency = curr;
+            if (curr === 'USD') { currencySymbol = '$'; currencyRate = 1.0; }
+            if (curr === 'EUR') { currencySymbol = '€'; currencyRate = 0.92; }
+            if (curr === 'INR') { currencySymbol = '₹'; currencyRate = 83.5; }
+            if (curr === 'BTC') { currencySymbol = '₿'; currencyRate = 0.0000155; }
+
+            renderTop25Bar();
+            selectCoin(activeCoin.id);
+            renderOrderBook();
+            renderPortfolio();
+        }
+
+        // Modals & Helpers
+        function populateModalDropdowns() {
+            const alertSelect = document.getElementById('alertCoinSelect');
+            const posSelect = document.getElementById('posCoinSelect');
+            
+            const options = TOP_25_COINS.map(c => `<option value="${c.id}">${c.name} (${c.symbol})</option>`).join('');
+            alertSelect.innerHTML = options;
+            posSelect.innerHTML = options;
+        }
+
+        function openAlertsModal() { document.getElementById('alertsModal').classList.remove('hidden'); }
+        function closeAlertsModal() { document.getElementById('alertsModal').classList.add('hidden'); }
+        function saveAlert() { alert('Demo only: this alert is not monitored in the background and will not send notifications.'); closeAlertsModal(); }
+
+        function openAddPositionModal() { document.getElementById('addPosModal').classList.remove('hidden'); }
+        function closeAddPosModal() { document.getElementById('addPosModal').classList.add('hidden'); }
+        function savePosition() {
+            const coinId = document.getElementById('posCoinSelect').value;
+            const qty = parseFloat(document.getElementById('posQuantity').value);
+            const price = parseFloat(document.getElementById('posBuyPrice').value);
+            
+            const coin = TOP_25_COINS.find(c => c.id === coinId);
+            if (coin && qty > 0) {
+                portfolioData.push({ id: coin.id, symbol: coin.symbol, name: coin.name, quantity: qty, buyPrice: price });
+                renderPortfolio();
+                closeAddPosModal();
+            }
+        }
+
+        function deletePosition(coinId) {
+            portfolioData = portfolioData.filter(p => p.id !== coinId);
+            renderPortfolio();
+        }
+
+        function copyCurrentAddress() {
+            navigator.clipboard.writeText(activeCoin.contract);
+            alert('Contract address copied to clipboard!');
+        }
+
+        function downloadAuditReport() {
+            alert(`Previewing illustrative security report for ${activeCoin.name} (${activeCoin.symbol})...
+
+Score: ${activeCoin.score}/100
+Risk Level: ${activeCoin.risk}`);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+CryptoLens AI — Netlify-ready build
+
+Included:
+- CryptoLens AI main research terminal
+- Aegis Lab demo module
+- Netlify serverless Gemini proxy (server-side GEMINI_API_KEY)
+- SPA routing, security headers, deployment instructions
+
+No API key is included. Configure GEMINI_API_KEY in Netlify environment variables before enabling hosted Gemini.
+Aegis is a simulation. External data APIs remain subject to provider availability and rate limits.
